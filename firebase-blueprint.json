@@ -1,0 +1,51 @@
+{
+  "entities": {
+    "UserProfile": {
+      "collection": "users",
+      "fields": {
+        "uid": { "type": "string", "required": true },
+        "displayName": { "type": "string", "required": false },
+        "email": { "type": "string", "required": false },
+        "photoURL": { "type": "string", "required": false },
+        "totalGames": { "type": "number", "required": false },
+        "totalWins": { "type": "number", "required": false },
+        "highScore": { "type": "number", "required": false },
+        "yahtzeeCount": { "type": "number", "required": false },
+        "updatedAt": { "type": "string", "required": false }
+      }
+    },
+    "GameRoom": {
+      "collection": "rooms",
+      "fields": {
+        "code": { "type": "string", "required": true },
+        "hostId": { "type": "string", "required": true },
+        "hostName": { "type": "string", "required": true },
+        "mode": { "type": "string", "required": true },
+        "status": { "type": "string", "required": true },
+        "players": { "type": "array", "required": true },
+        "currentPlayer": { "type": "number", "required": true },
+        "scores": { "type": "object", "required": true },
+        "turnHistory": { "type": "object", "required": true },
+        "dice": { "type": "array", "required": true },
+        "keepers": { "type": "array", "required": true },
+        "rollCount": { "type": "number", "required": true },
+        "lastMove": { "type": "object", "required": false },
+        "reactions": { "type": "array", "required": false },
+        "createdAt": { "type": "number", "required": true },
+        "updatedAt": { "type": "number", "required": true }
+      }
+    },
+    "GameHistory": {
+      "collection": "gameHistory",
+      "fields": {
+        "roomId": { "type": "string", "required": false },
+        "mode": { "type": "string", "required": true },
+        "players": { "type": "array", "required": true },
+        "winnerIdx": { "type": "number", "required": true },
+        "winningScore": { "type": "number", "required": true },
+        "date": { "type": "string", "required": true },
+        "qualityRatings": { "type": "object", "required": false }
+      }
+    }
+  }
+}

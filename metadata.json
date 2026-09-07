@@ -1,0 +1,6 @@
+{
+  "name": "Yahtzee",
+  "description": "A responsive multiplayer Yahtzee game with real-time scoring, physical & digital dice rolling, move quality metrics, sound effects, and online sync.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
