@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { RotateCcw, Dices, Edit3 } from 'lucide-react';
+import { RotateCcw, Dices, Edit3, ArrowDown } from 'lucide-react';
 import { DiePip } from './DiePip';
 import { sound } from '../lib/sound';
 import { haptics } from '../lib/haptics';
@@ -35,8 +35,13 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
 
   const handleRollClick = () => {
     if (!isCurrentPlayerTurn) return;
+
+    // If 3 rolls are completed, guide the player to the scorecard without wiping dice!
     if (isDone) {
-      onResetDice();
+      const sc = document.getElementById('scorecard');
+      if (sc) {
+        sc.scrollIntoView({ behavior: 'smooth' });
+      }
       return;
     }
 
@@ -64,9 +69,9 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
   if (rollCount === 0) {
     rollBtnLabel = 'Roll Dice';
   } else if (isDone) {
-    rollBtnLabel = 'Select Category';
+    rollBtnLabel = 'Select Category on Scorecard';
   } else {
-    rollBtnLabel = 'Roll Again';
+    rollBtnLabel = `Roll Again (${rollsLeft} left)`;
   }
 
   return (
@@ -153,11 +158,11 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
             !isCurrentPlayerTurn
               ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
               : isDone
-              ? 'bg-emerald-500 text-white hover:bg-emerald-400 active:translate-y-0.5 shadow-emerald-500/20'
+              ? 'bg-emerald-500 text-slate-950 hover:bg-emerald-400 active:translate-y-0.5 shadow-emerald-500/20'
               : 'bg-slate-100 text-slate-950 hover:bg-white active:translate-y-0.5 hover:shadow-white/10'
           }`}
         >
-          <Dices className="w-5 h-5" />
+          {isDone ? <ArrowDown className="w-5 h-5 animate-bounce" /> : <Dices className="w-5 h-5" />}
           <span>{rollBtnLabel}</span>
         </button>
 
@@ -170,14 +175,14 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
         </div>
 
         {/* Reset button if needed */}
-        {rollCount > 0 && !isDone && (
+        {rollCount > 0 && (
           <button
             type="button"
             onClick={() => {
               sound.playDieKeep(false);
               onResetDice();
             }}
-            title="Reset rolls"
+            title="Reset turn rolls"
             className="w-12 h-12 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition-colors active:scale-95 shrink-0"
           >
             <RotateCcw className="w-4 h-4" />

@@ -167,7 +167,7 @@ export const ScoreBoard: React.FC<ScoreBoardProps> = ({
   };
 
   return (
-    <div className="space-y-4">
+    <div id="scorecard" className="space-y-4 scroll-mt-20">
       {/* Upper Section */}
       <section className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl">
         <div className="flex items-center justify-between mb-3">

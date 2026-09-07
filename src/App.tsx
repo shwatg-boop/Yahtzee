@@ -23,7 +23,8 @@ import {
   ArrowRight,
   Sparkles,
   Wifi,
-  WifiOff
+  WifiOff,
+  Settings
 } from 'lucide-react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 
@@ -79,8 +80,8 @@ export default function App() {
   const [soundEnabled, setSoundEnabled] = useState<boolean>(sound.enabled);
   const [hapticsEnabled, setHapticsEnabled] = useState<boolean>(haptics.enabled);
 
-  // Setup / Game state
-  const [hasStarted, setHasStarted] = useState<boolean>(false);
+  // Setup / Game state - default hasStarted to true so game is immediately playable
+  const [hasStarted, setHasStarted] = useState<boolean>(true);
   const [gameMode, setGameMode] = useState<GameMode>('full');
   const [numPlayers, setNumPlayers] = useState<number>(2);
   const [playerNames, setPlayerNames] = useState<string[]>([...DEFAULT_PLAYER_NAMES.slice(0, 2)]);
@@ -101,7 +102,11 @@ export default function App() {
   const [history, setHistory] = useState<HistoricalGame[]>([]);
 
   // Modals state
-  const [editingCell, setEditingCell] = useState<{ playerIdx: number; category: Category } | null>(null);
+  const [editingCell, setEditingCell] = useState<{ 
+    playerIdx: number; 
+    category: Category; 
+    suggestedScore?: number; 
+  } | null>(null);
   const [showPhysicalInput, setShowPhysicalInput] = useState<boolean>(false);
   const [showMultiplayerModal, setShowMultiplayerModal] = useState<boolean>(false);
   const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
@@ -142,25 +147,57 @@ export default function App() {
     }
   }, []);
 
-  // Load local state on initial boot
+  // Load local state on initial boot with validation
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed.hasStarted !== undefined) setHasStarted(parsed.hasStarted);
-        if (parsed.gameMode) setGameMode(parsed.gameMode);
-        if (parsed.numPlayers) setNumPlayers(parsed.numPlayers);
-        if (parsed.playerNames) setPlayerNames(parsed.playerNames);
-        if (parsed.currentPlayer !== undefined) setCurrentPlayer(parsed.currentPlayer);
-        if (parsed.scores) setScores(parsed.scores);
-        if (parsed.turnHistories) setTurnHistories(parsed.turnHistories);
-        if (parsed.hideTotals !== undefined) setHideTotals(parsed.hideTotals);
-        if (parsed.dice) setDice(parsed.dice);
-        if (parsed.keepers) setKeepers(parsed.keepers);
-        if (parsed.rollCount !== undefined) setRollCount(parsed.rollCount);
+        if (parsed.gameMode === 'full' || parsed.gameMode === 'companion') setGameMode(parsed.gameMode);
+
+        const count = typeof parsed.numPlayers === 'number' && parsed.numPlayers >= 1 && parsed.numPlayers <= 6
+          ? parsed.numPlayers
+          : 2;
+        setNumPlayers(count);
+
+        if (Array.isArray(parsed.playerNames) && parsed.playerNames.length > 0) {
+          const validNames = parsed.playerNames.slice(0, count).map((n: string, i: number) => 
+            (typeof n === 'string' && n.trim()) ? n.trim() : DEFAULT_PLAYER_NAMES[i]
+          );
+          while (validNames.length < count) {
+            validNames.push(DEFAULT_PLAYER_NAMES[validNames.length]);
+          }
+          setPlayerNames(validNames);
+        }
+
+        const cp = typeof parsed.currentPlayer === 'number' && parsed.currentPlayer >= 0 && parsed.currentPlayer < count
+          ? parsed.currentPlayer
+          : 0;
+        setCurrentPlayer(cp);
+
+        if (parsed.scores && typeof parsed.scores === 'object') {
+          const safeScores: Record<number, PlayerScores> = {};
+          for (let i = 0; i < count; i++) {
+            safeScores[i] = parsed.scores[i] || {};
+          }
+          setScores(safeScores);
+        }
+
+        if (parsed.turnHistories && typeof parsed.turnHistories === 'object') {
+          const safeHist: Record<number, string[]> = {};
+          for (let i = 0; i < count; i++) {
+            safeHist[i] = Array.isArray(parsed.turnHistories[i]) ? parsed.turnHistories[i] : [];
+          }
+          setTurnHistories(safeHist);
+        }
+
+        if (parsed.hideTotals !== undefined) setHideTotals(Boolean(parsed.hideTotals));
+        if (Array.isArray(parsed.dice) && parsed.dice.length === 5) setDice(parsed.dice);
+        if (Array.isArray(parsed.keepers) && parsed.keepers.length === 5) setKeepers(parsed.keepers);
+        if (typeof parsed.rollCount === 'number') setRollCount(Math.min(3, Math.max(0, parsed.rollCount)));
         if (parsed.lastMove !== undefined) setLastMove(parsed.lastMove);
-        if (parsed.history) setHistory(parsed.history);
+        if (Array.isArray(parsed.history)) setHistory(parsed.history);
       }
     } catch (e) {
       console.warn('Could not load local storage:', e);
@@ -580,17 +617,24 @@ export default function App() {
     const pScores = scores[pIdx] || {};
     const diceReady = rollCount > 0 && dice.every(d => d !== null);
 
-    // Fast-tap: if dice are ready and cell is empty, directly commit previewed score!
+    // Fast-tap: if dice are ready and cell is empty:
     if (diceReady && pScores[cat.id] === undefined) {
       const preview = calculateCategoryScore(cat, dice as number[], pScores);
-      sound.playScoreCommit();
-      haptics.scoreCommit();
-      handleCommitScore(pIdx, cat.id, preview);
-      return;
+      if (preview > 0) {
+        sound.playScoreCommit();
+        haptics.scoreCommit();
+        handleCommitScore(pIdx, cat.id, preview);
+        return;
+      } else {
+        // Prevent accidental 0 scratch: open modal with scratch warning
+        setEditingCell({ playerIdx: pIdx, category: cat, suggestedScore: 0 });
+        return;
+      }
     }
 
     // Otherwise open modal for manual/custom or change
-    setEditingCell({ playerIdx: pIdx, category: cat });
+    const potential = diceReady ? calculateCategoryScore(cat, dice as number[], pScores) : undefined;
+    setEditingCell({ playerIdx: pIdx, category: cat, suggestedScore: potential });
   };
 
   // Create Room handler
@@ -684,7 +728,7 @@ export default function App() {
           </div>
           <div>
             <h1 className="text-xl font-black tracking-tighter uppercase italic text-slate-100 flex items-center gap-1.5">
-              <span>Y-FIRE</span> <span className="text-emerald-400">PRO</span>
+              <span>YAHTZEE</span> <span className="text-emerald-400">PRO</span>
             </h1>
             <p className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">
               {activePlayerName}&apos;s Turn · {numPlayers} Players
@@ -779,14 +823,28 @@ export default function App() {
               <BookOpen className="w-3.5 h-3.5" />
             </button>
 
+            {/* New / Reset Game */}
+            <button
+              type="button"
+              onClick={() => {
+                if (window.confirm('Reset scorecard and start a new game?')) {
+                  handleResetCurrentGame();
+                }
+              }}
+              className="w-7 h-7 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 flex items-center justify-center transition-colors"
+              title="New game / Restart match"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+
             {/* Settings */}
             <button
               type="button"
               onClick={() => setShowSettingsModal(true)}
               className="w-7 h-7 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 flex items-center justify-center transition-colors"
-              title="Game settings"
+              title="Game mode & players setup"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
+              <Settings className="w-3.5 h-3.5" />
             </button>
           </div>
 
@@ -957,6 +1015,8 @@ export default function App() {
           playerIdx={editingCell.playerIdx}
           playerName={playerNames[editingCell.playerIdx]}
           currentValue={scores[editingCell.playerIdx]?.[editingCell.category.id]}
+          suggestedScore={editingCell.suggestedScore}
+          currentDice={dice}
           onSave={val => {
             handleCommitScore(editingCell.playerIdx, editingCell.category.id, val);
             setEditingCell(null);

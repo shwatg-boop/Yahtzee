@@ -60,7 +60,7 @@ export const SetupModal: React.FC<SetupModalProps> = ({
           </div>
         </div>
         <h1 className="text-2xl font-black uppercase italic tracking-tight">
-          Y-FIRE <span className="text-emerald-400">PRO SETUP</span>
+          Yahtzee <span className="text-emerald-400">Game Setup</span>
         </h1>
         <p className="text-xs text-slate-400">Choose game mode, player count & custom roster</p>
       </div>

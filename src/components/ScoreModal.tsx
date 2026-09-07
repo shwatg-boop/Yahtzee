@@ -10,6 +10,8 @@ interface ScoreModalProps {
   playerIdx: number;
   playerName: string;
   currentValue: number | undefined;
+  suggestedScore?: number;
+  currentDice?: (number | null)[];
   onSave: (value: number) => void;
   onClear: () => void;
   onClose: () => void;
@@ -20,12 +22,18 @@ export const ScoreModal: React.FC<ScoreModalProps> = ({
   playerIdx,
   playerName,
   currentValue,
+  suggestedScore,
+  currentDice,
   onSave,
   onClear,
   onClose
 }) => {
   const [customVal, setCustomVal] = useState<string>(
-    currentValue !== undefined ? String(currentValue) : ''
+    currentValue !== undefined
+      ? String(currentValue)
+      : suggestedScore !== undefined
+      ? String(suggestedScore)
+      : ''
   );
 
   const handleChoose = (val: number) => {
@@ -145,6 +153,41 @@ export const ScoreModal: React.FC<ScoreModalProps> = ({
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {/* Suggested Score from Current Roll */}
+        {suggestedScore !== undefined && (
+          <div className={`p-3.5 rounded-2xl border ${
+            suggestedScore > 0 
+              ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300' 
+              : 'bg-amber-500/10 border-amber-500/40 text-amber-300'
+          }`}>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-wider opacity-80">
+                  {suggestedScore > 0 ? 'Current Dice Score' : 'Scratch Warning'}
+                </div>
+                <div className="text-xs mt-0.5">
+                  {suggestedScore > 0 ? (
+                    <span>Your roll scores <strong className="text-emerald-400 font-mono text-sm">{suggestedScore} pts</strong></span>
+                  ) : (
+                    <span>Your roll doesn&apos;t meet this category (0 pts). Scratch it?</span>
+                  )}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleChoose(suggestedScore)}
+                className={`px-3.5 py-1.5 rounded-xl font-black text-xs uppercase tracking-wider shrink-0 transition-all ${
+                  suggestedScore > 0
+                    ? 'bg-emerald-500 text-slate-950 hover:bg-emerald-400 shadow-md shadow-emerald-500/20'
+                    : 'bg-amber-500 text-slate-950 hover:bg-amber-400 shadow-md shadow-amber-500/20'
+                }`}
+              >
+                {suggestedScore > 0 ? `Bank ${suggestedScore}` : 'Scratch (0)'}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Quick Options */}
         <div>
